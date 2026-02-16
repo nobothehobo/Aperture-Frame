@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-zinc-50 text-zinc-900 antialiased;
+  font-feature-settings: 'cv11' 1, 'ss01' 1;
+}
+
+.control-card {
+  @apply rounded-2xl border border-zinc-200/80 bg-white/95 shadow-[0_6px_24px_rgba(15,23,42,0.05)] backdrop-blur-sm;
+}
+
+.input-range {
+  @apply h-2 w-full cursor-pointer appearance-none rounded-lg bg-zinc-200;
+}
+
+.input-range::-webkit-slider-thumb {
+  @apply h-5 w-5 appearance-none rounded-full border border-zinc-300 bg-white shadow;
+  margin-top: -6px;
+}
