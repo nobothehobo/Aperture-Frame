@@ -16,7 +16,7 @@ type ExportFormat = 'jpeg' | 'png';
 type ResolutionMode = 'original' | 'safe';
 type ExportPreset = 'instagram' | 'ultra' | 'png';
 type WatermarkPosition = 'br' | 'bl' | 'center';
-type ExifTemplate = 'full' | 'basic' | 'gear';
+type ExifTemplate = 'full' | 'basic' | 'gear' | 'fuji';
 type ExifFont = 'clean' | 'mono';
 type ExifAlignment = 'left' | 'center' | 'right';
 type ExifPosition = 'bottom-center' | 'bottom-right';
@@ -46,7 +46,8 @@ const ASPECTS: { label: string; value: AspectPreset }[] = [
 const EXIF_TEMPLATES: Record<ExifTemplate, string> = {
   full: '{focal}mm • ƒ/{aperture} • {shutter} • ISO {iso}',
   basic: 'ƒ/{aperture} • {shutter} • ISO {iso}',
-  gear: '{camera} • {lens}'
+  gear: '{camera} • {lens}',
+  fuji: '{lens} • f/{aperture} • {shutter} • ISO {iso}'
 };
 
 function isShareFileSupported(file: File): boolean {
@@ -94,6 +95,7 @@ export default function HomePage() {
   const [exifSize, setExifSize] = useState(14);
   const [exifAlignment, setExifAlignment] = useState<ExifAlignment>('center');
   const [exifPosition, setExifPosition] = useState<ExifPosition>('bottom-center');
+  const [showExifDebug, setShowExifDebug] = useState(false);
 
   const [exportPreset, setExportPreset] = useState<ExportPreset>('instagram');
   const [exportFormat, setExportFormat] = useState<ExportFormat>('jpeg');
@@ -105,6 +107,8 @@ export default function HomePage() {
   const [progress, setProgress] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [sharedFile, setSharedFile] = useState<File | null>(null);
+
+  const watermarkNeedsReencode = watermarkEnabled && resolutionMode === 'original' && exportFormat === 'jpeg' && !stripMetadata;
 
   const orientedSize = useMemo(() => {
     if (!image) return null;
@@ -171,7 +175,8 @@ export default function HomePage() {
 
     const buffer = await file.arrayBuffer();
     const orientation = parseExifOrientation(buffer);
-    setExifData(extractExifData(buffer));
+    const parsedExif = await extractExifData(file);
+    setExifData(parsedExif);
 
     let drawable: CanvasImageSource;
     if ('createImageBitmap' in window) {
@@ -195,6 +200,10 @@ export default function HomePage() {
       fileName: file.name.replace(/\.[^.]+$/, ''),
       sourceFile: file
     });
+    if (parsedExif.unavailable) {
+      setStatusMessage('Ready. Metadata unavailable for this file in current browser.');
+      return;
+    }
     setStatusMessage('Ready. Fine-tune your frame and export.');
   }
 
@@ -417,6 +426,9 @@ export default function HomePage() {
           <summary className="cursor-pointer text-base font-semibold">Watermark</summary>
           <div className="mt-3 space-y-3">
             <Toggle label="Enable watermark" checked={watermarkEnabled} onToggle={() => setWatermarkEnabled((v) => !v)} />
+            {watermarkNeedsReencode && (
+              <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">Watermark requires re-encoding. Switch to Ultra JPEG or PNG.</p>
+            )}
             {watermarkEnabled && (
               <>
                 <label className="block text-sm">
@@ -440,6 +452,7 @@ export default function HomePage() {
           <summary className="cursor-pointer text-base font-semibold">EXIF Caption</summary>
           <div className="mt-3 space-y-3">
             <Toggle label="Enable EXIF Caption" checked={exifEnabled} onToggle={() => setExifEnabled((v) => !v)} />
+            {exifData.unavailable && <p className="rounded-xl bg-zinc-100 px-3 py-2 text-xs text-zinc-600">Metadata unavailable.</p>}
             {exifEnabled && (
               <>
                 <p className="rounded-xl bg-zinc-100 px-3 py-2 text-xs text-zinc-500">Caption is rendered in the border below the photo by default.</p>
@@ -447,6 +460,7 @@ export default function HomePage() {
                   <option value="full">{"{focal}mm • ƒ/{aperture} • {shutter} • ISO {iso}"}</option>
                   <option value="basic">{"ƒ/{aperture} • {shutter} • ISO {iso}"}</option>
                   <option value="gear">{"{camera} • {lens}"}</option>
+                  <option value="fuji">{"XF 23mm f/1.4 • f/2 • 1/250 • ISO 400"}</option>
                 </select>
                 <div className="grid grid-cols-2 gap-2">
                   <Choice label="Clean" active={exifFont === 'clean'} onClick={() => setExifFont('clean')} />
@@ -511,6 +525,12 @@ export default function HomePage() {
                 <Toggle label="Strip metadata on export" checked={stripMetadata} onToggle={() => setStripMetadata((v) => !v)} />
                 {!stripMetadata && (
                   <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">For best JPEG preservation, if no visual changes are applied and Original is selected, export can reuse the source file.</p>
+                )}
+                <Toggle label="Debug EXIF values" checked={showExifDebug} onToggle={() => setShowExifDebug((v) => !v)} />
+                {showExifDebug && (
+                  <pre className="max-h-48 overflow-auto rounded-xl bg-zinc-950 px-3 py-2 text-[11px] leading-5 text-zinc-100">
+                    {JSON.stringify(exifData.debug ?? { status: exifData.unavailable ? 'Metadata unavailable' : 'No EXIF tags found' }, null, 2)}
+                  </pre>
                 )}
               </div>
             </details>
