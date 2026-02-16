@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-zinc-50 text-zinc-900 antialiased;
+}
+
+.control-card {
+  @apply rounded-2xl border border-zinc-200 bg-white/90 backdrop-blur-sm;
+}
+
+.input-range {
+  @apply h-2 w-full cursor-pointer appearance-none rounded-lg bg-zinc-200;
+}
+
+.input-range::-webkit-slider-thumb {
+  @apply h-5 w-5 appearance-none rounded-full border border-zinc-300 bg-white shadow;
+  margin-top: -6px;
+}
